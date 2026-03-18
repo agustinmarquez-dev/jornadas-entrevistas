@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Jornadas de Entrevistas</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, sans-serif; background: #f8fafc; min-height: 100vh; }
+    .app { max-width: 860px; margin: 0 auto; padding: 24px 16px; }
+    .card { background: #fff; border-radius: 14px; box-shadow: 0 2px 12px rgba(0,0,0,.07); overflow: hidden; }
+    .header { background: linear-gradient(135deg, #6366f1, #8b5cf6); padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; }
+    .header h1 { font-size: 20px; font-weight: 700; color: #fff; }
+    .header p { font-size: 13px; color: #e0e7ff; margin-top: 2px; }
+    .header-btns { display: flex; gap: 8px; }
+    .tabs { display: flex; border-bottom: 1px solid #e5e7eb; background: #fafafa; }
+    .tab { padding: 12px 20px; border: none; background: none; cursor: pointer; font-size: 14px; color: #6b7280; border-bottom: 2px solid transparent; font-weight: 400; }
+    .tab.active { color: #6366f1; border-bottom-color: #6366f1; font-weight: 700; }
+    .body { padding: 24px; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; max-width: 460px; }
+    label { display: block; font-size: 12px; font-weight: 600; color: #374151; margin-bottom: 5px; }
+    input, select { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid #d1d5db; font-size: 14px; outline: none; background: #fafafa; }
+    input:focus, select:focus { border-color: #6366f1; }
+    .btn { padding: 9px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 14px; }
+    .btn-primary { background: #6366f1; color: #fff; }
+    .btn-primary:disabled { background: #a5b4fc; }
+    .btn-success { background: #10b981; color: #fff; }
+    .btn-gray { background: #f3f4f6; color: #374151; }
+    .btn-sm { padding: 4px 10px; border-radius: 6px; border: 1.5px solid; background: #fff; cursor: pointer; font-size: 12px; font-weight: 600; }
+    .btn-sm.edit { color: #6366f1; border-color: #c7d2fe; }
+    .btn-sm.del { color: #ef4444; border-color: #fecaca; }
+    .btn-sm.refresh { color: #6366f1; border-color: #c7d2fe; background: rgba(255,255,255,.8); }
+    .btn-sm.config { color: #ef4444; border-color: #fecaca; background: rgba(255,255,255,.8); }
+    .msg-error { color: #ef4444; font-size: 13px; margin-top: 10px; }
+    .msg-ok { color: #10b981; font-size: 13px; margin-top: 10px; }
+    .row-actions { display: flex; gap: 10px; margin-top: 18px; }
+    table { width: 100%; border-collapse: collapse; font-size: 14px; }
+    th { padding: 10px 14px; text-align: left; color: #374151; font-weight: 600; border-bottom: 1px solid #e5e7eb; background: #f3f4f6; }
+    th.center, td.center { text-align: center; }
+    td { padding: 10px 14px; border-bottom: 1px solid #f3f4f6; color: #374151; }
+    tr:nth-child(even) td { background: #fafafa; }
+    .badge { border-radius: 8px; padding: 2px 10px; font-weight: 600; font-size: 12px; }
+    .filter-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+    .filter-btns { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .filter-btn { padding: 5px 12px; border-radius: 20px; border: 1.5px solid #e5e7eb; background: #fff; color: #374151; font-size: 12px; cursor: pointer; font-weight: 400; }
+    .filter-btn.active { color: #fff; font-weight: 600; }
+    .stat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 28px; }
+    .stat-card { border-radius: 12px; padding: 14px 16px; }
+    .stat-icon { font-size: 20px; }
+    .stat-value { font-size: 26px; font-weight: 800; margin-top: 4px; }
+    .stat-label { font-size: 12px; color: #6b7280; margin-top: 2px; }
+    .chart-title { font-size: 14px; font-weight: 600; color: #374151; margin-bottom: 12px; }
+    .chart-wrap { margin-bottom: 28px; }
+    .empty { text-align: center; color: #9ca3af; padding: 40px 0; font-size: 14px; }
+    .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.32); display: flex; align-items: center; justify-content: center; z-index: 100; }
+    .modal { background: #fff; border-radius: 12px; padding: 28px; max-width: 340px; text-align: center; box-shadow: 0 8px 32px rgba(0,0,0,.12); }
+    .modal-icon { font-size: 32px; margin-bottom: 8px; }
+    .modal-title { font-weight: 600; margin-bottom: 6px; }
+    .modal-desc { color: #6b7280; font-size: 13px; margin-bottom: 20px; }
+    .modal-btns { display: flex; gap: 10px; justify-content: center; }
+    /* Setup */
+    .setup { max-width: 540px; margin: 0 auto; padding: 40px 20px; }
+    .step { display: flex; gap: 12px; margin-bottom: 14px; align-items: flex-start; }
+    .step-num { min-width: 26px; height: 26px; border-radius: 50%; background: #6366f1; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 13px; }
+    .step-text { font-size: 14px; color: #374151; padding-top: 4px; }
+    .url-input { width: 100%; padding: 9px 11px; border-radius: 8px; border: 1.5px solid #d1d5db; font-size: 14px; margin-top: 8px; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+
+<!-- SETUP SCREEN -->
+<div class="setup" id="setup-screen">
+  <div class="card">
+    <div class="header">
+      <div>
+        <h1>🔗 Conectar con Google Sheets</h1>
+        <p>Seguí los pasos para vincular la herramienta</p>
+      </div>
+    </div>
+    <div class="body">
+      <div class="step"><div class="step-num">1</div><div class="step-text">Abrí Google Sheets y creá una planilla nueva.</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">Hacé clic en <b>Extensiones → Apps Script</b>.</div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">Borrá el código existente y pegá el código del Apps Script.</div></div>
+      <div class="step"><div class="step-num">4</div><div class="step-text">Guardá (💾) y hacé clic en <b>Implementar → Nueva implementación</b>.</div></div>
+      <div class="step"><div class="step-num">5</div><div class="step-text">Tipo: <b>Aplicación web</b>. Ejecutar como: <b>Yo</b>. Acceso: <b>Cualquier usuario</b>. → Implementar.</div></div>
+      <div class="step"><div class="step-num">6</div><div class="step-text">Copiá la URL de implementación y pegala abajo.</div></div>
+      <div style="margin-top:8px;">
+        <label for="url-input-setup">URL de implementación</label>
+        <input id="url-input-setup" class="url-input" placeholder="https://script.google.com/macros/s/..." />
+        <div id="url-error" class="msg-error hidden"></div>
+        <button class="btn btn-primary" style="margin-top:14px;width:100%;" onclick="saveUrl()">Conectar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN APP -->
+<div class="app hidden" id="main-screen">
+  <div class="card">
+    <div class="header">
+      <div>
+        <h1>📋 Jornadas de Entrevistas</h1>
+        <p>Datos en Google Sheets · Compartido con el equipo</p>
+      </div>
+      <div class="header-btns">
+        <button class="btn-sm refresh" onclick="loadEntries()">🔄 Actualizar</button>
+        <button class="btn-sm config" onclick="resetUrl()" title="Cambiar URL">⚙️</button>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" onclick="setTab('carga', this)">✏️ Carga</button>
+      <button class="tab" onclick="setTab('tabla', this)">📄 Registros</button>
+      <button class="tab" onclick="setTab('stats', this)">📊 Estadísticas</button>
+    </div>
+    <div class="body">
+
+      <!-- CARGA -->
+      <div id="tab-carga">
+        <div style="font-size:16px;font-weight:600;margin-bottom:16px;color:#1f2937;" id="form-title">➕ Nueva jornada</div>
+        <div class="form-grid">
+          <div><label>Fecha</label><input type="date" id="f-fecha" /></div>
+          <div><label>Horario</label>
+            <select id="f-horario">
+              <option value="">Seleccionar...</option>
+              <option>08:00</option><option>09:00</option><option>10:00</option>
+              <option>11:00</option><option>12:00</option><option>13:00</option>
+              <option>14:00</option><option>15:00</option><option>16:00</option>
+              <option>17:00</option><option>18:00</option>
+            </select>
+          </div>
+          <div><label>Sala</label>
+            <select id="f-sala">
+              <option>Florida</option><option>Merlo</option><option>Adrogué</option>
+            </select>
+          </div>
+          <div><label>Cantidad de postulantes</label><input type="number" id="f-cantidad" min="0" placeholder="0" /></div>
+        </div>
+        <div id="form-error" class="msg-error hidden"></div>
+        <div id="form-ok" class="msg-ok hidden"></div>
+        <div class="row-actions">
+          <button class="btn btn-primary" id="btn-submit" onclick="submitForm()">Cargar jornada</button>
+          <button class="btn btn-gray hidden" id="btn-cancel" onclick="cancelEdit()">Cancelar</button>
+        </div>
+      </div>
+
+      <!-- TABLA -->
+      <div id="tab-tabla" class="hidden">
+        <div class="filter-row">
+          <div style="font-size:14px;color:#6b7280;">
+            <b id="count-regs" style="color:#1f2937;">0</b> registros ·
+            <b id="count-posts" style="color:#1f2937;">0</b> postulantes
+          </div>
+          <div class="filter-btns">
+            <button class="filter-btn active" data-sala="Todas" onclick="setFilter(this)" style="border-color:#6366f1;background:#6366f1;color:#fff;">Todas</button>
+            <button class="filter-btn" data-sala="Florida" onclick="setFilter(this)">Florida</button>
+            <button class="filter-btn" data-sala="Merlo" onclick="setFilter(this)">Merlo</button>
+            <button class="filter-btn" data-sala="Adrogué" onclick="setFilter(this)">Adrogué</button>
+            <button class="btn btn-success" style="font-size:12px;padding:5px 14px;" onclick="exportExcel()">📥 Excel</button>
+          </div>
+        </div>
+        <div id="tabla-loading" class="empty">Cargando desde Google Sheets...</div>
+        <div id="tabla-empty" class="empty hidden">No hay registros cargados aún.</div>
+        <div style="overflow-x:auto;" id="tabla-wrap" class="hidden">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Horario</th><th>Sala</th>
+                <th class="center">Postulantes</th><th></th>
+              </tr>
+            </thead>
+            <tbody id="tabla-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div id="tab-stats" class="hidden">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:16px;">
+          <button class="btn btn-success" style="font-size:13px;" onclick="exportExcel()">📥 Exportar Excel</button>
+        </div>
+        <div id="stats-empty" class="empty hidden">Cargá jornadas para ver estadísticas.</div>
+        <div id="stats-content" class="hidden">
+          <div class="stat-grid" id="stat-cards"></div>
+          <div class="chart-wrap">
+            <div class="chart-title">Postulantes por sala</div>
+            <canvas id="chart-sala" height="80"></canvas>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-title">Postulantes por fecha y sala</div>
+            <canvas id="chart-fecha" height="100"></canvas>
+          </div>
+          <div class="chart-wrap">
+            <div class="chart-title">Resumen por fecha</div>
+            <div style="overflow-x:auto;">
+              <table>
+                <thead>
+                  <tr>
+                    <th class="center">Fecha</th>
+                    <th class="center" style="color:#6366f1;">Florida</th>
+                    <th class="center" style="color:#10b981;">Merlo</th>
+                    <th class="center" style="color:#f59e0b;">Adrogué</th>
+                    <th class="center">Total</th>
+                  </tr>
+                </thead>
+                <tbody id="resumen-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- DELETE MODAL -->
+<div class="modal-bg hidden" id="modal-delete">
+  <div class="modal">
+    <div class="modal-icon">🗑️</div>
+    <div class="modal-title">¿Eliminar este registro?</div>
+    <div class="modal-desc">Esta acción no se puede deshacer.</div>
+    <div class="modal-btns">
+      <button class="btn" style="background:#ef4444;color:#fff;" onclick="confirmDelete()">Eliminar</button>
+      <button class="btn btn-gray" onclick="closeModal()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SALAS = ["Florida", "Merlo", "Adrogué"];
+const COLORS = { Florida: "#6366f1", Merlo: "#10b981", "Adrogué": "#f59e0b" };
+const SCRIPT_URL_KEY = "jornadas_script_url";
+
+let entries = [];
+let filterSala = "Todas";
+let editId = null;
+let deleteId = null;
+let chartSala = null;
+let chartFecha = null;
+let scriptUrl = "";
+
+function fmt(f) {
+  if (!f) return "";
+  const [y,m,d] = String(f).split("-");
+  return `${d}/${m}/${y}`;
+}
+
+function buildUrl(base, params) {
+  const u = new URL(base);
+  Object.entries(params).forEach(([k,v]) => u.searchParams.set(k, v));
+  return u.toString();
+}
+
+async function apiFetch(params) {
+  const res = await fetch(buildUrl(scriptUrl, params), { redirect: "follow" });
+  const text = await res.text();
+  return JSON.parse(text);
+}
+
+// ── URL SETUP ──
+function saveUrl() {
+  const val = document.getElementById("url-input-setup").value.trim();
+  const err = document.getElementById("url-error");
+  if (!val.includes("script.google.com")) {
+    err.textContent = "La URL no parece ser de un Apps Script. Verificá que copiaste bien.";
+    err.classList.remove("hidden");
+    return;
+  }
+  err.classList.add("hidden");
+  localStorage.setItem(SCRIPT_URL_KEY, val);
+  scriptUrl = val;
+  showMain();
+}
+
+function resetUrl() {
+  localStorage.removeItem(SCRIPT_URL_KEY);
+  scriptUrl = "";
+  document.getElementById("main-screen").classList.add("hidden");
+  document.getElementById("setup-screen").classList.remove("hidden");
+}
+
+function showMain() {
+  document.getElementById("setup-screen").classList.add("hidden");
+  document.getElementById("main-screen").classList.remove("hidden");
+  loadEntries();
+}
+
+// ── LOAD ──
+async function loadEntries() {
+  showTableLoading();
+  try {
+    const data = await apiFetch({ action: "getAll" });
+    entries = data.sort((a,b) => String(a.fecha).localeCompare(String(b.fecha)) || a.horario.localeCompare(b.horario));
+    renderTabla();
+    renderStats();
+  } catch(e) {
+    console.error(e);
+    alert("No se pudo conectar con Google Sheets. Verificá la URL del Apps Script.");
+  }
+}
+
+// ── TABS ──
+function setTab(name, el) {
+  ["carga","tabla","stats"].forEach(t => document.getElementById("tab-"+t).classList.add("hidden"));
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.getElementById("tab-"+name).classList.remove("hidden");
+  el.classList.add("active");
+  if (name === "tabla") renderTabla();
+  if (name === "stats") renderStats();
+}
+
+// ── FORM ──
+async function submitForm() {
+  const fecha = document.getElementById("f-fecha").value;
+  const horario = document.getElementById("f-horario").value;
+  const sala = document.getElementById("f-sala").value;
+  const cantidad = parseInt(document.getElementById("f-cantidad").value);
+  const errEl = document.getElementById("form-error");
+  const okEl = document.getElementById("form-ok");
+
+  if (!fecha || !horario || isNaN(cantidad) || cantidad < 0) {
+    errEl.textContent = "Completá todos los campos correctamente.";
+    errEl.classList.remove("hidden"); return;
+  }
+  errEl.classList.add("hidden");
+  document.getElementById("btn-submit").disabled = true;
+  document.getElementById("btn-submit").textContent = "Guardando...";
+
+  try {
+    if (editId !== null) {
+      await apiFetch({ action: "update", id: editId, fecha, horario, sala, cantidad });
+    } else {
+      await apiFetch({ action: "add", id: String(Date.now()), fecha, horario, sala, cantidad });
+    }
+    await loadEntries();
+    resetForm();
+    okEl.textContent = editId ? "✓ Registro actualizado." : "✓ Jornada cargada correctamente.";
+    okEl.classList.remove("hidden");
+    setTimeout(() => okEl.classList.add("hidden"), 2500);
+    editId = null;
+  } catch(e) {
+    errEl.textContent = "Error al guardar. Intentá de nuevo.";
+    errEl.classList.remove("hidden");
+  }
+  document.getElementById("btn-submit").disabled = false;
+  document.getElementById("btn-submit").textContent = editId ? "Guardar cambios" : "Cargar jornada";
+}
+
+function resetForm() {
+  ["f-fecha","f-horario","f-cantidad"].forEach(id => document.getElementById(id).value = "");
+  document.getElementById("f-sala").value = "Florida";
+  document.getElementById("form-title").textContent = "➕ Nueva jornada";
+  document.getElementById("btn-submit").textContent = "Cargar jornada";
+  document.getElementById("btn-cancel").classList.add("hidden");
+  editId = null;
+}
+
+function cancelEdit() { resetForm(); }
+
+function startEdit(id) {
+  const e = entries.find(x => String(x.id) === String(id));
+  if (!e) return;
+  editId = e.id;
+  document.getElementById("f-fecha").value = e.fecha;
+  document.getElementById("f-horario").value = e.horario;
+  document.getElementById("f-sala").value = e.sala;
+  document.getElementById("f-cantidad").value = e.cantidad;
+  document.getElementById("form-title").textContent = "✏️ Editar registro";
+  document.getElementById("btn-submit").textContent = "Guardar cambios";
+  document.getElementById("btn-cancel").classList.remove("hidden");
+  setTab("carga", document.querySelectorAll(".tab")[0]);
+}
+
+// ── DELETE ──
+function askDelete(id) {
+  deleteId = id;
+  document.getElementById("modal-delete").classList.remove("hidden");
+}
+function closeModal() {
+  document.getElementById("modal-delete").classList.add("hidden");
+  deleteId = null;
+}
+async function confirmDelete() {
+  if (!deleteId) return;
+  await apiFetch({ action: "delete", id: deleteId });
+  closeModal();
+  await loadEntries();
+}
+
+// ── FILTER ──
+function setFilter(btn) {
+  filterSala = btn.dataset.sala;
+  document.querySelectorAll(".filter-btn").forEach(b => {
+    const sala = b.dataset.sala;
+    b.classList.remove("active");
+    b.style.background = "#fff";
+    b.style.color = "#374151";
+    b.style.borderColor = "#e5e7eb";
+  });
+  btn.classList.add("active");
+  const c = filterSala === "Todas" ? "#6366f1" : COLORS[filterSala];
+  btn.style.background = c;
+  btn.style.color = "#fff";
+  btn.style.borderColor = c;
+  renderTabla();
+}
+
+// ── TABLA ──
+function showTableLoading() {
+  document.getElementById("tabla-loading").classList.remove("hidden");
+  document.getElementById("tabla-empty").classList.add("hidden");
+  document.getElementById("tabla-wrap").classList.add("hidden");
+}
+
+function renderTabla() {
+  const filtered = filterSala === "Todas" ? entries : entries.filter(e => e.sala === filterSala);
+  document.getElementById("count-regs").textContent = filtered.length;
+  document.getElementById("count-posts").textContent = filtered.reduce((a,b)=>a+Number(b.cantidad),0);
+  document.getElementById("tabla-loading").classList.add("hidden");
+
+  if (filtered.length === 0) {
+    document.getElementById("tabla-empty").classList.remove("hidden");
+    document.getElementById("tabla-wrap").classList.add("hidden");
+    return;
+  }
+  document.getElementById("tabla-empty").classList.add("hidden");
+  document.getElementById("tabla-wrap").classList.remove("hidden");
+
+  const tbody = document.getElementById("tabla-body");
+  tbody.innerHTML = filtered.map(e => {
+    const c = COLORS[e.sala];
+    return `<tr>
+      <td>${fmt(e.fecha)}</td>
+      <td>${e.horario}</td>
+      <td><span class="badge" style="background:${c}22;color:${c}">${e.sala}</span></td>
+      <td class="center" style="font-weight:700;">${e.cantidad}</td>
+      <td style="display:flex;gap:6px;">
+        <button class="btn-sm edit" onclick="startEdit('${e.id}')">Editar</button>
+        <button class="btn-sm del" onclick="askDelete('${e.id}')">Borrar</button>
+      </td>
+    </tr>`;
+  }).join("");
+}
+
+// ── STATS ──
+function renderStats() {
+  if (entries.length === 0) {
+    document.getElementById("stats-empty").classList.remove("hidden");
+    document.getElementById("stats-content").classList.add("hidden");
+    return;
+  }
+  document.getElementById("stats-empty").classList.add("hidden");
+  document.getElementById("stats-content").classList.remove("hidden");
+
+  const grand = entries.reduce((a,b)=>a+Number(b.cantidad),0);
+  const cards = [{ label:"Total general", value:grand, color:"#6366f1", icon:"👥" },
+    ...SALAS.map(s=>({ label:s, value:entries.filter(e=>e.sala===s).reduce((a,b)=>a+Number(b.cantidad),0), color:COLORS[s], icon:"📍" }))
+  ];
+  document.getElementById("stat-cards").innerHTML = cards.map(c=>`
+    <div class="stat-card" style="background:${c.color}12;border:1.5px solid ${c.color}33">
+      <div class="stat-icon">${c.icon}</div>
+      <div class="stat-value" style="color:${c.color}">${c.value}</div>
+      <div class="stat-label">${c.label}</div>
+    </div>`).join("");
+
+  // Chart sala
+  const totalSala = SALAS.map(s=>entries.filter(e=>e.sala===s).reduce((a,b)=>a+Number(b.cantidad),0));
+  if (chartSala) chartSala.destroy();
+  chartSala = new Chart(document.getElementById("chart-sala"), {
+    type:"bar", data:{ labels:SALAS, datasets:[{ data:totalSala, backgroundColor:SALAS.map(s=>COLORS[s]), borderRadius:6 }] },
+    options:{ plugins:{legend:{display:false}}, scales:{y:{beginAtZero:true}} }
+  });
+
+  // Chart fecha
+  const fechas = [...new Set(entries.map(e=>e.fecha))].sort();
+  if (chartFecha) chartFecha.destroy();
+  chartFecha = new Chart(document.getElementById("chart-fecha"), {
+    type:"bar",
+    data:{
+      labels: fechas.map(fmt),
+      datasets: SALAS.map(s=>({ label:s, data:fechas.map(f=>entries.filter(e=>e.fecha===f&&e.sala===s).reduce((a,b)=>a+Number(b.cantidad),0)), backgroundColor:COLORS[s], borderRadius:3 }))
+    },
+    options:{ plugins:{legend:{position:"bottom"}}, scales:{x:{stacked:true},y:{stacked:true,beginAtZero:true}} }
+  });
+
+  // Resumen tabla
+  document.getElementById("resumen-body").innerHTML = fechas.map((f,i)=>{
+    const cols = SALAS.map(s=>entries.filter(e=>e.fecha===f&&e.sala===s).reduce((a,b)=>a+Number(b.cantidad),0));
+    const tot = cols.reduce((a,b)=>a+b,0);
+    return `<tr style="background:${i%2===0?'#fff':'#fafafa'}">
+      <td class="center">${fmt(f)}</td>
+      ${cols.map((v,i)=>`<td class="center" style="color:${COLORS[SALAS[i]]};font-weight:600">${v}</td>`).join("")}
+      <td class="center" style="font-weight:700">${tot}</td>
+    </tr>`;
+  }).join("");
+}
+
+// ── EXCEL ──
+function exportExcel() {
+  const wb = XLSX.utils.book_new();
+  const det = entries.map(e=>({ Fecha:fmt(e.fecha), Horario:e.horario, Sala:e.sala, Postulantes:e.cantidad }));
+  const ws1 = XLSX.utils.json_to_sheet(det);
+  ws1["!cols"] = [{wch:14},{wch:10},{wch:12},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws1, "Detalle");
+  const fechas = [...new Set(entries.map(e=>e.fecha))].sort();
+  const resumen = fechas.map(f=>{
+    const row = { Fecha: fmt(f) };
+    SALAS.forEach(s=>{ row[s]=entries.filter(e=>e.fecha===f&&e.sala===s).reduce((a,b)=>a+Number(b.cantidad),0); });
+    row["Total"]=SALAS.reduce((a,s)=>a+(row[s]||0),0);
+    return row;
+  });
+  const totRow = { Fecha:"TOTAL" };
+  SALAS.forEach(s=>{ totRow[s]=entries.filter(e=>e.sala===s).reduce((a,b)=>a+Number(b.cantidad),0); });
+  totRow["Total"]=entries.reduce((a,b)=>a+Number(b.cantidad),0);
+  resumen.push(totRow);
+  const ws2 = XLSX.utils.json_to_sheet(resumen);
+  XLSX.utils.book_append_sheet(wb, ws2, "Resumen por Fecha");
+  XLSX.writeFile(wb, `Jornadas_Entrevistas_${new Date().toISOString().slice(0,10)}.xlsx`);
+}
+
+// ── INIT ──
+window.onload = () => {
+  const saved = localStorage.getItem(SCRIPT_URL_KEY);
+  if (saved) {
+    scriptUrl = saved;
+    showMain();
+  }
+};
+</script>
+</body>
+</html>
